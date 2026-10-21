@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -26,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,8 +38,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -44,17 +45,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
-private val Fondo = Color(0xFFF5F7FF)
-private val Morado = Color(0xFF6547E8)
-private val Azul = Color(0xFF31B9E8)
-private val TextoOscuro = Color(0xFF20243A)
+private val Naranja = Color(0xFFF47C35)
+private val Fondo = Color(0xFFF6F3EF)
+private val TextoOscuro = Color(0xFF252525)
+private val Gris = Color(0xFF77716B)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            MaterialTheme {
+            MaterialTheme(
+                colorScheme = lightColorScheme(
+                    primary = Naranja,
+                    background = Fondo,
+                    surface = Color.White
+                )
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Fondo
@@ -68,9 +75,9 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun SocialCommunityApp() {
-    var nombre by remember { mutableStateOf("") }
-    var mensaje by remember {
-        mutableStateOf("¡Bienvenido a SocialComunnity!")
+    var mensaje by remember { mutableStateOf("") }
+    var mensajePublicado by remember {
+        mutableStateOf("¡Bienvenido a nuestra comunidad!")
     }
     var contador by remember { mutableIntStateOf(0) }
     var mostrarSegundaPagina by remember {
@@ -84,10 +91,10 @@ fun SocialCommunityApp() {
         }
     }
 
-    val colorDinamico = when (contador % 3) {
-        0 -> Morado
-        1 -> Color(0xFF008F87)
-        else -> Color(0xFFE87932)
+    val colorContador = if (contador % 2 == 0) {
+        Naranja
+    } else {
+        Color(0xFF3976C5)
     }
 
     if (mostrarSegundaPagina) {
@@ -98,54 +105,54 @@ fun SocialCommunityApp() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Fondo)
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Encabezado: primer cambio de la interfaz
-            Text(
-                text = "Bienvenido a SocialComunnity",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Morado,
-                textAlign = TextAlign.Center
-            )
+            Spacer(modifier = Modifier.height(12.dp))
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Logo
-            Box(
-                modifier = Modifier
-                    .size(68.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(Morado, Azul)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
+            // Encabezado
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "S",
-                    color = Color.White,
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .background(Naranja, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "S",
+                        color = Color.White,
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "SocialCommunity",
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextoOscuro
+                    )
+
+                    Text(
+                        text = "Tu espacio para conectar",
+                        fontSize = 13.sp,
+                        color = Gris
+                    )
+                }
+
+                Text(text = "🔔", fontSize = 23.sp)
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            Text(
-                text = "Conecta, comparte y descubre",
-                fontSize = 14.sp,
-                color = Color.Gray,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(22.dp))
-
-            // Tarjeta principal
+            // Tarjeta de bienvenida
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -153,119 +160,172 @@ fun SocialCommunityApp() {
                     containerColor = Color.White
                 ),
                 elevation = CardDefaults.cardElevation(
-                    defaultElevation = 5.dp
+                    defaultElevation = 4.dp
                 )
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    modifier = Modifier.padding(22.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Tu espacio personal",
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextoOscuro
+                        text = "¡BIENVENIDO!",
+                        color = Naranja,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
                     )
-
-                    Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = mensaje,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colorDinamico,
-                        textAlign = TextAlign.Center
+                        text = "Hola, mi app 👋",
+                        color = TextoOscuro,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Comparte tus ideas y conecta con tu comunidad.",
+                        color = Gris,
+                        fontSize = 15.sp,
+                        lineHeight = 22.sp
+                    )
 
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Campo de texto
                     OutlinedTextField(
-                        value = nombre,
-                        onValueChange = { nombre = it },
+                        value = mensaje,
+                        onValueChange = { mensaje = it },
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Escribe tu mensaje") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(14.dp)
+                        placeholder = {
+                            Text("¿Qué quieres compartir?")
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        singleLine = true
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
+                    // Botón para publicar
                     Button(
                         onClick = {
-                            if (nombre.isNotBlank()) {
-                                mensaje = nombre.trim()
-                                nombre = ""
+                            if (mensaje.isNotBlank()) {
+                                mensajePublicado = mensaje.trim()
+                                mensaje = ""
                             }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp),
+                            .height(52.dp),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Morado
+                            containerColor = Naranja
                         )
                     ) {
                         Text(
-                            text = "Actualizar mensaje",
-                            fontWeight = FontWeight.Bold
+                            text = "Compartir mensaje →",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Contador con color dinámico
+            // Mensaje publicado
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor =
-                        colorDinamico.copy(alpha = 0.10f)
+                    containerColor = Color.White
                 )
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .padding(18.dp)
                 ) {
-                    Column {
-                        Text(
-                            text = "Contador activo",
-                            fontWeight = FontWeight.Bold,
-                            color = TextoOscuro
-                        )
+                    Text(
+                        text = "Mensaje de la comunidad",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextoOscuro
+                    )
 
-                        Text(
-                            text = "El color cambia cada segundo",
-                            fontSize = 12.sp,
-                            color = Color.Gray
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "$contador s",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = colorDinamico
+                        text = mensajePublicado,
+                        fontSize = 15.sp,
+                        color = Gris
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
+            // Contador que cambia de color
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Contador automático",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextoOscuro
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "$contador s",
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colorContador
+                    )
+
+                    Text(
+                        text = "El color cambia cada segundo",
+                        fontSize = 13.sp,
+                        color = Gris
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Navegación a la segunda pantalla
             Button(
                 onClick = { mostrarSegundaPagina = true },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = TextoOscuro
                 )
             ) {
-                Text("Explorar segunda pantalla")
+                Text("Explorar la aplicación")
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Hecho para conectar personas ❤️",
+                color = Gris,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
         }
     }
 }
@@ -280,27 +340,51 @@ fun SegundaPagina(onVolver: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .background(Naranja, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "S",
+                color = Color.White,
+                fontSize = 42.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         Text(
-            text = "¡Hola!",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Morado
+            text = "Explora tu comunidad",
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextoOscuro,
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "Esta es la segunda pantalla de SocialComunnity.",
+            text = "Aquí podrás agregar nuevas funciones y espacios para tus usuarios.",
             fontSize = 16.sp,
-            color = TextoOscuro,
-            textAlign = TextAlign.Center
+            color = Gris,
+            textAlign = TextAlign.Center,
+            lineHeight = 24.sp
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
         Button(
             onClick = onVolver,
-            shape = RoundedCornerShape(14.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Naranja
+            )
         ) {
             Text("Volver al inicio")
         }
