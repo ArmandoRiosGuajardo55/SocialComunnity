@@ -1,4 +1,5 @@
 
+
 package com.example.socialcomunnity
 
 import android.os.Bundle
@@ -7,8 +8,10 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,8 +25,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.mindrot.jbcrypt.BCrypt
 
-// Paleta de colores naranja
 private val Naranja = Color(0xFFFF7900)
 private val NaranjaClaro = Color(0xFFFFA64D)
 private val FondoOscuro = Color(0xFF24150D)
@@ -50,6 +53,11 @@ fun PantallaLogin() {
     var error by remember { mutableStateOf(false) }
     var accesoConcedido by remember { mutableStateOf(false) }
 
+    // Estados para la demostración BCrypt
+    var hashGenerado by remember { mutableStateOf("") }
+    var mostrarHash by remember { mutableStateOf(false) }
+    var errorDemo by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -62,7 +70,7 @@ fun PantallaLogin() {
                     )
                 )
             )
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         contentAlignment = Alignment.Center
     ) {
         if (accesoConcedido) {
@@ -73,23 +81,29 @@ fun PantallaLogin() {
                     usuario = ""
                     contrasena = ""
                     error = false
+                    mostrarHash = false
+                    hashGenerado = ""
                 }
             )
         } else {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
+                Spacer(modifier = Modifier.height(12.dp))
+
                 Image(
                     painter = painterResource(
                         id = R.drawable.imagen2
                     ),
                     contentDescription = "Logo de SocialComunnity",
-                    modifier = Modifier.size(110.dp)
+                    modifier = Modifier.size(100.dp)
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
                     text = "SocialComunnity",
@@ -108,9 +122,9 @@ fun PantallaLogin() {
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(28.dp))
 
-                // Usuario: etiqueta a la izquierda de la caja
+                // Usuario a la izquierda de su caja
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -132,7 +146,7 @@ fun PantallaLogin() {
                         },
                         placeholder = {
                             Text(
-                                text = "Escribe tu usuario",
+                                "Escribe tu usuario",
                                 color = TextoSecundario,
                                 fontSize = 13.sp
                             )
@@ -144,9 +158,9 @@ fun PantallaLogin() {
                     )
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // Contraseña: etiqueta a la izquierda de la caja
+                // Contraseña a la izquierda de su caja
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -165,10 +179,13 @@ fun PantallaLogin() {
                         onValueChange = {
                             contrasena = it
                             error = false
+                            mostrarHash = false
+                            hashGenerado = ""
+                            errorDemo = false
                         },
                         placeholder = {
                             Text(
-                                text = "Escribe tu contraseña",
+                                "Escribe tu contraseña",
                                 color = TextoSecundario,
                                 fontSize = 13.sp
                             )
@@ -186,7 +203,7 @@ fun PantallaLogin() {
                 }
 
                 if (error) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
                         text = "Usuario o contraseña incorrectos",
@@ -196,7 +213,7 @@ fun PantallaLogin() {
                     )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 Button(
                     onClick = {
@@ -212,7 +229,7 @@ fun PantallaLogin() {
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp),
+                        .height(52.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Naranja
@@ -225,6 +242,102 @@ fun PantallaLogin() {
                         fontWeight = FontWeight.Bold
                     )
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Botón de demostración BCrypt
+                OutlinedButton(
+                    onClick = {
+                        if (contrasena.isNotBlank()) {
+                            hashGenerado = BCrypt.hashpw(
+                                contrasena,
+                                BCrypt.gensalt(12)
+                            )
+                            mostrarHash = true
+                            errorDemo = false
+                        } else {
+                            mostrarHash = false
+                            errorDemo = true
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = NaranjaClaro
+                    )
+                ) {
+                    Text("Ver contraseña y hash")
+                }
+
+                if (errorDemo) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Escribe una contraseña primero.",
+                        color = Color(0xFFFF7777),
+                        fontSize = 13.sp
+                    )
+                }
+
+                if (mostrarHash) {
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF352015)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                text = "Demostración BCrypt",
+                                color = NaranjaClaro,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Text(
+                                text = "Contraseña original:",
+                                color = TextoSecundario,
+                                fontWeight = FontWeight.SemiBold
+                            )
+
+                            Text(
+                                text = contrasena,
+                                color = TextoClaro
+                            )
+
+                            HorizontalDivider(
+                                color = Naranja.copy(alpha = 0.5f)
+                            )
+
+                            Text(
+                                text = "Hash BCrypt:",
+                                color = TextoSecundario,
+                                fontWeight = FontWeight.SemiBold
+                            )
+
+                            Text(
+                                text = hashGenerado,
+                                color = NaranjaClaro,
+                                fontSize = 12.sp
+                            )
+
+                            Text(
+                                text = "Si vuelves a generar el hash, " +
+                                        "puede cambiar por la sal aleatoria.",
+                                color = TextoSecundario,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
             }
         }
     }
@@ -265,10 +378,7 @@ fun PantallaBienvenida(
             ),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Text(
-                text = "Cerrar sesión",
-                color = Color.White
-            )
+            Text("Cerrar sesión", color = Color.White)
         }
     }
 }
