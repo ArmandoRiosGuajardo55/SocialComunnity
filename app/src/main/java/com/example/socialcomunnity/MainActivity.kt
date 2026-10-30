@@ -4,6 +4,8 @@ package com.example.socialcomunnity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -168,8 +170,6 @@ fun PantallaLogin(
                 unfocusedTextColor = Blanco,
                 focusedLabelColor = Naranja,
                 unfocusedLabelColor = Color.LightGray,
-                focusedPlaceholderColor = Color.LightGray,
-                unfocusedPlaceholderColor = Color.LightGray,
                 cursorColor = Naranja,
                 focusedBorderColor = Naranja,
                 unfocusedBorderColor = Color.LightGray
@@ -201,7 +201,6 @@ fun PantallaLogin(
 
         if (error.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))
-
             Text(
                 text = error,
                 color = Color(0xFFFF6B6B),
@@ -251,7 +250,38 @@ fun PantallaBienvenida(
     var publicaciones by remember { mutableStateOf(emptyList<Publicacion>()) }
     var idEditando by remember { mutableStateOf<Int?>(null) }
     var resultadoExportacion by remember { mutableStateOf("") }
+    var contenidoParaGuardar by remember { mutableStateOf("") }
     var mensaje by remember { mutableStateOf("") }
+
+    val guardarJson = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            try {
+                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use {
+                    it.write(contenidoParaGuardar)
+                }
+                mensaje = "Archivo JSON guardado correctamente"
+            } catch (e: Exception) {
+                mensaje = "Error al guardar el archivo JSON"
+            }
+        }
+    }
+
+    val guardarXml = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/xml")
+    ) { uri ->
+        if (uri != null) {
+            try {
+                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use {
+                    it.write(contenidoParaGuardar)
+                }
+                mensaje = "Archivo XML guardado correctamente"
+            } catch (e: Exception) {
+                mensaje = "Error al guardar el archivo XML"
+            }
+        }
+    }
 
     fun cargarPublicaciones() {
         publicaciones = baseDatos.obtenerTodas()
@@ -479,6 +509,8 @@ fun PantallaBienvenida(
             onClick = {
                 resultadoExportacion =
                     JsonHelper.convertirAJson(publicaciones)
+                contenidoParaGuardar = resultadoExportacion
+                mensaje = "JSON generado. Puedes guardarlo."
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
@@ -492,6 +524,8 @@ fun PantallaBienvenida(
             onClick = {
                 resultadoExportacion =
                     XmlHelper.convertirAXml(publicaciones)
+                contenidoParaGuardar = resultadoExportacion
+                mensaje = "XML generado. Puedes guardarlo."
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
@@ -517,10 +551,7 @@ fun PantallaBienvenida(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(250.dp)
-                    .background(
-                        Gris,
-                        RoundedCornerShape(8.dp)
-                    )
+                    .background(Gris, RoundedCornerShape(8.dp))
                     .padding(12.dp)
                     .verticalScroll(rememberScrollState())
             ) {
@@ -529,6 +560,32 @@ fun PantallaBienvenida(
                     color = Color(0xFF8FE3A0),
                     fontSize = 13.sp
                 )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = {
+                    guardarJson.launch("publicaciones.json")
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Naranja
+                )
+            ) {
+                Text("Guardar archivo JSON", color = Blanco)
+            }
+
+            Button(
+                onClick = {
+                    guardarXml.launch("publicaciones.xml")
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Naranja
+                )
+            ) {
+                Text("Guardar archivo XML", color = Blanco)
             }
         }
 
