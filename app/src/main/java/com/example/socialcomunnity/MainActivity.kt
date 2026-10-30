@@ -10,9 +10,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,9 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.socialcomunnity.base.BaseDatosHelper
 import com.example.socialcomunnity.datos.JsonHelper
+import com.example.socialcomunnity.datos.UsuarioJsonHelper
 import com.example.socialcomunnity.datos.XmlHelper
 import com.example.socialcomunnity.modelo.Publicacion
-import org.mindrot.jbcrypt.BCrypt
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -38,9 +38,6 @@ private val Naranja = Color(0xFFFF7900)
 private val Fondo = Color(0xFF171717)
 private val Blanco = Color(0xFFFFFFFF)
 private val Gris = Color(0xFF292929)
-
-private const val PASSWORD_HASH =
-    "\$2a\$12\$fuSXJzQcGaFyNa20F3V1t.ZL3mADf4NCG.pWfGPOCseNt66Gu6JV6"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,54 +53,190 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun SocialComunnityApp() {
+    val context = LocalContext.current
+
+    val usuariosHelper = remember {
+        UsuarioJsonHelper(context).apply {
+            inicializarAdmin()
+        }
+    }
+
+    var pantalla by remember { mutableStateOf("inicio") }
     var usuario by remember { mutableStateOf("") }
     var contrasena by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
-    var sesionIniciada by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Fondo
     ) {
-        if (sesionIniciada) {
-            PantallaBienvenida(
-                usuario = usuario,
-                cerrarSesion = {
-                    sesionIniciada = false
-                    usuario = ""
-                    contrasena = ""
-                    error = ""
-                }
-            )
-        } else {
-            PantallaLogin(
-                usuario = usuario,
-                cambiarUsuario = {
-                    usuario = it
-                    error = ""
-                },
-                contrasena = contrasena,
-                cambiarContrasena = {
-                    contrasena = it
-                    error = ""
-                },
-                error = error,
-                iniciarSesion = {
-                    val accesoCorrecto = try {
-                        usuario.trim() == "admin" &&
-                                BCrypt.checkpw(contrasena, PASSWORD_HASH)
-                    } catch (e: IllegalArgumentException) {
-                        false
-                    }
+        when (pantalla) {
 
-                    if (accesoCorrecto) {
-                        sesionIniciada = true
+            "inicio" -> {
+                PantallaInicio(
+                    irALogin = {
                         error = ""
-                    } else {
-                        error = "Usuario o contraseña incorrectos"
+                        pantalla = "login"
+                    },
+                    irARegistro = {
+                        usuario = ""
+                        contrasena = ""
+                        error = ""
+                        pantalla = "registro"
                     }
-                }
-            )
+                )
+            }
+
+            "login" -> {
+                PantallaLogin(
+                    usuario = usuario,
+                    cambiarUsuario = {
+                        usuario = it
+                        error = ""
+                    },
+                    contrasena = contrasena,
+                    cambiarContrasena = {
+                        contrasena = it
+                        error = ""
+                    },
+                    error = error,
+                    iniciarSesion = {
+                        if (usuariosHelper.validarUsuario(usuario, contrasena)) {
+                            usuario = usuario.trim()
+                            contrasena = ""
+                            error = ""
+                            pantalla = "principal"
+                        } else {
+                            error = "Usuario o contraseña incorrectos"
+                        }
+                    },
+                    volver = {
+                        error = ""
+                        pantalla = "inicio"
+                    }
+                )
+            }
+
+            "registro" -> {
+                PantallaRegistro(
+                    registrar = { nuevoUsuario, nuevaContrasena ->
+                        if (nuevoUsuario.isBlank() || nuevaContrasena.isBlank()) {
+                            error = "Completa todos los campos"
+                        } else if (usuariosHelper.registrarUsuario(
+                                nuevoUsuario,
+                                nuevaContrasena
+                            )
+                        ) {
+                            usuario = nuevoUsuario.trim()
+                            contrasena = ""
+                            error = "Cuenta creada. Ahora inicia sesión."
+                            pantalla = "login"
+                        } else {
+                            error = "Ese usuario ya existe o no se pudo registrar"
+                        }
+                    },
+                    volver = {
+                        error = ""
+                        pantalla = "inicio"
+                    },
+                    error = error
+                )
+            }
+
+            "principal" -> {
+                PantallaBienvenida(
+                    usuario = usuario,
+                    cerrarSesion = {
+                        usuario = ""
+                        contrasena = ""
+                        error = ""
+                        pantalla = "inicio"
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PantallaInicio(
+    irALogin: () -> Unit,
+    irARegistro: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Fondo)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.imagen2),
+            contentDescription = "Logo de SocialComunnity",
+            modifier = Modifier.size(120.dp)
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        Text(
+            text = "SocialComunnity",
+            color = Naranja,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = "Conecta con tu comunidad",
+            color = Blanco,
+            fontSize = 15.sp
+        )
+
+        Spacer(modifier = Modifier.height(35.dp))
+
+        Text(
+            text = "¡Bienvenido!",
+            color = Blanco,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "¿Ya tienes una cuenta?",
+            color = Color.LightGray,
+            fontSize = 16.sp
+        )
+
+        Spacer(modifier = Modifier.height(25.dp))
+
+        Button(
+            onClick = irALogin,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Naranja
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Ya tengo cuenta", color = Blanco)
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        OutlinedButton(
+            onClick = irARegistro,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Naranja
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Crear cuenta")
         }
     }
 }
@@ -115,7 +248,8 @@ fun PantallaLogin(
     contrasena: String,
     cambiarContrasena: (String) -> Unit,
     error: String,
-    iniciarSesion: () -> Unit
+    iniciarSesion: () -> Unit,
+    volver: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -142,22 +276,13 @@ fun PantallaLogin(
         )
 
         Text(
-            text = "Conecta con tu comunidad",
-            color = Blanco,
-            fontSize = 15.sp
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Text(
             text = "Iniciar sesión",
             color = Blanco,
             fontSize = 23.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
+            fontWeight = FontWeight.SemiBold
         )
+
+        Spacer(modifier = Modifier.height(25.dp))
 
         OutlinedTextField(
             value = usuario,
@@ -201,9 +326,14 @@ fun PantallaLogin(
 
         if (error.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))
+
             Text(
                 text = error,
-                color = Color(0xFFFF6B6B),
+                color = if (error.startsWith("Cuenta creada")) {
+                    Color(0xFF8FE3A0)
+                } else {
+                    Color(0xFFFF6B6B)
+                },
                 fontSize = 14.sp
             )
         }
@@ -228,13 +358,117 @@ fun PantallaLogin(
             )
         }
 
+        TextButton(onClick = volver) {
+            Text("Volver", color = Naranja)
+        }
+    }
+}
+
+@Composable
+fun PantallaRegistro(
+    registrar: (String, String) -> Unit,
+    volver: () -> Unit,
+    error: String
+) {
+    var nuevoUsuario by remember { mutableStateOf("") }
+    var nuevaContrasena by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Fondo)
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.imagen2),
+            contentDescription = "Logo de SocialComunnity",
+            modifier = Modifier.size(110.dp)
+        )
+
         Spacer(modifier = Modifier.height(18.dp))
 
         Text(
-            text = "Bienvenido a tu comunidad",
-            color = Color.LightGray,
-            fontSize = 13.sp
+            text = "Crear cuenta",
+            color = Naranja,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold
         )
+
+        Spacer(modifier = Modifier.height(25.dp))
+
+        OutlinedTextField(
+            value = nuevoUsuario,
+            onValueChange = { nuevoUsuario = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Nuevo usuario") },
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Blanco,
+                unfocusedTextColor = Blanco,
+                focusedLabelColor = Naranja,
+                unfocusedLabelColor = Color.LightGray,
+                cursorColor = Naranja,
+                focusedBorderColor = Naranja,
+                unfocusedBorderColor = Color.LightGray
+            )
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        OutlinedTextField(
+            value = nuevaContrasena,
+            onValueChange = { nuevaContrasena = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Nueva contraseña") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Blanco,
+                unfocusedTextColor = Blanco,
+                focusedLabelColor = Naranja,
+                unfocusedLabelColor = Color.LightGray,
+                cursorColor = Naranja,
+                focusedBorderColor = Naranja,
+                unfocusedBorderColor = Color.LightGray
+            )
+        )
+
+        if (error.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = error,
+                color = Color(0xFFFF6B6B),
+                fontSize = 14.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = {
+                registrar(nuevoUsuario, nuevaContrasena)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Naranja
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Registrarme", color = Blanco)
+        }
+
+        TextButton(onClick = volver) {
+            Text("Volver", color = Naranja)
+        }
     }
 }
 
@@ -258,9 +492,13 @@ fun PantallaBienvenida(
     ) { uri ->
         if (uri != null) {
             try {
-                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use {
-                    it.write(contenidoParaGuardar)
-                }
+                context.contentResolver
+                    .openOutputStream(uri)
+                    ?.bufferedWriter()
+                    ?.use {
+                        it.write(contenidoParaGuardar)
+                    }
+
                 mensaje = "Archivo JSON guardado correctamente"
             } catch (e: Exception) {
                 mensaje = "Error al guardar el archivo JSON"
@@ -273,9 +511,13 @@ fun PantallaBienvenida(
     ) { uri ->
         if (uri != null) {
             try {
-                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use {
-                    it.write(contenidoParaGuardar)
-                }
+                context.contentResolver
+                    .openOutputStream(uri)
+                    ?.bufferedWriter()
+                    ?.use {
+                        it.write(contenidoParaGuardar)
+                    }
+
                 mensaje = "Archivo XML guardado correctamente"
             } catch (e: Exception) {
                 mensaje = "Error al guardar el archivo XML"
@@ -323,8 +565,11 @@ fun PantallaBienvenida(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = if (idEditando == null) "Crear publicación"
-            else "Editar publicación",
+            text = if (idEditando == null) {
+                "Crear publicación"
+            } else {
+                "Editar publicación"
+            },
             color = Naranja,
             fontSize = 21.sp,
             fontWeight = FontWeight.Bold
@@ -367,6 +612,7 @@ fun PantallaBienvenida(
                                 fecha = fecha
                             )
                         )
+
                         mensaje = "Publicación creada"
                     } else {
                         baseDatos.actualizar(
@@ -377,6 +623,7 @@ fun PantallaBienvenida(
                                 fecha = fecha
                             )
                         )
+
                         mensaje = "Publicación actualizada"
                     }
 
@@ -394,8 +641,11 @@ fun PantallaBienvenida(
             )
         ) {
             Text(
-                text = if (idEditando == null) "Publicar"
-                else "Guardar cambios",
+                text = if (idEditando == null) {
+                    "Publicar"
+                } else {
+                    "Guardar cambios"
+                },
                 color = Blanco
             )
         }
@@ -443,7 +693,9 @@ fun PantallaBienvenida(
                     containerColor = Gris
                 )
             ) {
-                Column(modifier = Modifier.padding(14.dp)) {
+                Column(
+                    modifier = Modifier.padding(14.dp)
+                ) {
                     Text(
                         text = publicacion.usuario,
                         color = Naranja,
@@ -487,7 +739,10 @@ fun PantallaBienvenida(
                                 mensaje = "Publicación eliminada"
                             }
                         ) {
-                            Text("Eliminar", color = Color(0xFFFF6B6B))
+                            Text(
+                                "Eliminar",
+                                color = Color(0xFFFF6B6B)
+                            )
                         }
                     }
                 }
@@ -509,6 +764,7 @@ fun PantallaBienvenida(
             onClick = {
                 resultadoExportacion =
                     JsonHelper.convertirAJson(publicaciones)
+
                 contenidoParaGuardar = resultadoExportacion
                 mensaje = "JSON generado. Puedes guardarlo."
             },
@@ -524,6 +780,7 @@ fun PantallaBienvenida(
             onClick = {
                 resultadoExportacion =
                     XmlHelper.convertirAXml(publicaciones)
+
                 contenidoParaGuardar = resultadoExportacion
                 mensaje = "XML generado. Puedes guardarlo."
             },
