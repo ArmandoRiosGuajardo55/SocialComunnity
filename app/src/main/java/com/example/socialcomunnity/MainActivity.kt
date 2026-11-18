@@ -2,7 +2,12 @@
 package com.example.socialcomunnity
 
 import android.os.Bundle
+import android.os.SystemClock
 import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -10,6 +15,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -19,6 +31,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -35,9 +49,11 @@ import com.example.socialcomunnity.modelo.Publicacion
 import com.example.socialcomunnity.modelo.PublicacionApi
 import org.json.JSONObject
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.sqrt
 
 private object ColoresApp {
     var fondo by mutableStateOf(Color(0xFF171717))
@@ -514,6 +530,116 @@ fun PantallaBienvenida(
 ) {
     var seccionSeleccionada by remember { mutableStateOf("inicio") }
 
+    // El contador vive en PantallaBienvenida, no dentro de la pantalla Videos.
+    // Por eso no se reinicia cuando cambiamos de sección.
+    var contadorVideos by remember { mutableStateOf(0) }
+    var contadorIniciado by remember { mutableStateOf(false) }
+
+    // Comienza al entrar por primera vez a Videos. Después sigue activo
+    // aunque el usuario cambie a Inicio, Perfil, Buscar o Crear.
+    LaunchedEffect(contadorIniciado) {
+        if (contadorIniciado) {
+            while (true) {
+                delay(1000L)
+                contadorVideos++
+            }
+        }
+    }
+
+    // La animación también vive en el nivel principal, así que sigue avanzando
+    // aunque la sección Videos no esté visible.
+    val transicionOvalo = rememberInfiniteTransition()
+    val movimientoOvalo by transicionOvalo.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1800),
+            repeatMode = RepeatMode.Restart
+        )
+    )
+
+    // Sensores: la inclinación controla la orientación 3D y una sacudida activa el rebote.
+    var inclinacionHorizontal by remember { mutableStateOf(0f) }
+    var inclinacionVertical by remember { mutableStateOf(0f) }
+    var numeroSacudidas by remember { mutableStateOf(0) }
+    val desplazamientoRebote = remember { Animatable(0f) }
+
+    // Cada sacudida reproduce un salto corto y un regreso elástico.
+    LaunchedEffect(numeroSacudidas) {
+        if (numeroSacudidas > 0) {
+            desplazamientoRebote.snapTo(0f)
+            desplazamientoRebote.animateTo(
+                targetValue = -48f,
+                animationSpec = tween(durationMillis = 130)
+            )
+            desplazamientoRebote.animateTo(
+                targetValue = 0f,
+                animationSpec = spring(
+                    dampingRatio = 0.35f,
+                    stiffness = 500f
+                )
+            )
+        }
+    }
+    val contextoSensor = LocalContext.current
+    val administradorSensores = remember(contextoSensor) {
+        contextoSensor.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    }
+    val acelerometro = remember(administradorSensores) {
+        administradorSensores.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    }
+
+    // Se registra una sola vez mientras PantallaBienvenida permanece activa.
+    // Cambiar entre secciones no elimina el listener; al salir de esta pantalla sí.
+    DisposableEffect(administradorSensores, acelerometro) {
+        if (acelerometro != null) {
+            var ultimaSacudida = 0L
+            val listener = object : SensorEventListener {
+                override fun onSensorChanged(evento: SensorEvent) {
+                    if (evento.values.size >= 3) {
+                        // Detectamos una sacudida por la aceleración total del teléfono.
+                        val x = evento.values[0]
+                        val y = evento.values[1]
+                        val z = evento.values[2]
+                        val aceleracionTotal = sqrt(x * x + y * y + z * z)
+                        val ahora = SystemClock.elapsedRealtime()
+
+                        // El intervalo evita que una sola sacudida genere muchos rebotes.
+                        if (aceleracionTotal > 16.5f && ahora - ultimaSacudida > 650L) {
+                            ultimaSacudida = ahora
+                            numeroSacudidas++
+                        }
+
+                        // Suavizamos la respuesta para evitar movimientos bruscos.
+                        val nuevoHorizontal = (evento.values[0] * 4.5f)
+                            .coerceIn(-40f, 40f)
+                        val nuevoVertical = (evento.values[1] * -4.5f)
+                            .coerceIn(-40f, 40f)
+
+                        inclinacionHorizontal =
+                            inclinacionHorizontal * 0.75f + nuevoHorizontal * 0.25f
+                        inclinacionVertical =
+                            inclinacionVertical * 0.75f + nuevoVertical * 0.25f
+                    }
+                }
+
+                override fun onAccuracyChanged(sensor: Sensor?, precision: Int) = Unit
+            }
+
+            administradorSensores.registerListener(
+                listener,
+                acelerometro,
+                SensorManager.SENSOR_DELAY_GAME
+            )
+
+            onDispose {
+                administradorSensores.unregisterListener(listener)
+            }
+        } else {
+            onDispose { }
+        }
+    }
+
     Scaffold(
         containerColor = Fondo,
         bottomBar = {
@@ -532,7 +658,10 @@ fun PantallaBienvenida(
                 secciones.forEach { (id, simbolo, etiqueta) ->
                     NavigationBarItem(
                         selected = seccionSeleccionada == id,
-                        onClick = { seccionSeleccionada = id },
+                        onClick = {
+                            seccionSeleccionada = id
+                            if (id == "videos") contadorIniciado = true
+                        },
                         icon = {
                             Text(
                                 text = simbolo,
@@ -570,10 +699,13 @@ fun PantallaBienvenida(
                 modifier = Modifier.padding(padding)
             )
 
-            "videos" -> PantallaDemostracion(
-                titulo = "Videos",
-                descripcion = "Aquí aparecerán los videos y el contenido multimedia de la comunidad.",
-                simbolo = "▶",
+            "videos" -> PantallaVideosActiva(
+                contador = contadorVideos,
+                movimientoOvalo = movimientoOvalo,
+                inclinacionHorizontal = inclinacionHorizontal,
+                inclinacionVertical = inclinacionVertical,
+                desplazamientoRebote = desplazamientoRebote.value,
+                tieneAcelerometro = acelerometro != null,
                 modifier = Modifier.padding(padding)
             )
 
@@ -661,10 +793,13 @@ private fun PantallaCrearNavegacion(
 }
 
 @Composable
-private fun PantallaDemostracion(
-    titulo: String,
-    descripcion: String,
-    simbolo: String,
+private fun PantallaVideosActiva(
+    contador: Int,
+    movimientoOvalo: Float,
+    inclinacionHorizontal: Float,
+    inclinacionVertical: Float,
+    desplazamientoRebote: Float,
+    tieneAcelerometro: Boolean,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -675,13 +810,86 @@ private fun PantallaDemostracion(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(simbolo, color = Naranja, fontSize = 64.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = "Videos",
+            color = Naranja,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            text = "Contador en funcionamiento",
+            color = TextoSecundario,
+            fontSize = 15.sp
+        )
+
+        Spacer(Modifier.height(24.dp))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Gris),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 36.dp, vertical = 22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Tiempo transcurrido", color = TextoSecundario, fontSize = 14.sp)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "$contador s",
+                    color = Naranja,
+                    fontSize = 42.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(Modifier.height(38.dp))
+
+        Text(
+            text = if (tieneAcelerometro) "Óvalo controlado por el sensor" else "Acelerómetro no disponible",
+            color = if (tieneAcelerometro) Naranja else Color(0xFFFF6B6B),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Inclina el teléfono para girarlo y sacúdelo para hacerlo rebotar.",
+            color = TextoSecundario,
+            fontSize = 13.sp
+        )
         Spacer(Modifier.height(16.dp))
-        Text(titulo, color = Blanco, fontSize = 27.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(10.dp))
-        Text(descripcion, color = TextoSecundario, fontSize = 15.sp)
-        Spacer(Modifier.height(18.dp))
-        Text("Próximamente", color = Naranja, fontWeight = FontWeight.SemiBold)
+
+        // El óvalo gira sobre su propio centro sin desplazarse de su lugar.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .background(Gris, RoundedCornerShape(18.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(100.dp)
+                    .height(52.dp)
+                    .graphicsLayer {
+                        rotationX = inclinacionVertical
+                        rotationY = inclinacionHorizontal
+                        translationY = desplazamientoRebote
+                    }
+                    .rotate(movimientoOvalo)
+                    .background(Naranja, RoundedCornerShape(percent = 50))
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+        Text(
+            text = "Puedes cambiar de sección: el contador y el movimiento seguirán activos.",
+            color = TextoSecundario,
+            fontSize = 13.sp
+        )
     }
 }
 
