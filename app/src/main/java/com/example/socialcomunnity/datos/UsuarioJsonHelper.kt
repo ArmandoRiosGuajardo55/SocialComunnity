@@ -113,5 +113,39 @@ class UsuarioJsonHelper(context: Context) {
             false
         }
     }
-}
 
+    // Cambiar la contraseña de una cuenta (pide la actual para confirmar)
+    fun cambiarContrasena(
+        usuario: String,
+        actual: String,
+        nueva: String
+    ): Boolean {
+        if (nueva.isBlank() || !validarUsuario(usuario, actual)) {
+            return false
+        }
+
+        return try {
+            val usuarios = leerUsuarios()
+            val nombre = usuario.trim()
+
+            for (i in 0 until usuarios.length()) {
+                val cuenta = usuarios.getJSONObject(i)
+
+                if (cuenta.getString("usuario")
+                        .equals(nombre, ignoreCase = true)
+                ) {
+                    cuenta.put(
+                        "passwordHash",
+                        BCrypt.hashpw(nueva, BCrypt.gensalt(12))
+                    )
+                    guardarUsuarios(usuarios)
+                    return true
+                }
+            }
+
+            false
+        } catch (e: Exception) {
+            false
+        }
+    }
+}

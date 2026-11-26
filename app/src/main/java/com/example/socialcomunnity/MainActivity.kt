@@ -1,6 +1,9 @@
 
 package com.example.socialcomunnity
 
+import com.example.socialcomunnity.ui.figma.AppSocialCommunity
+import com.example.socialcomunnity.ui.screens.inicio.PantallaInicio as PantallaFeedInicio
+import com.example.socialcomunnity.ui.screens.notificaciones.PantallaNotificaciones as PantallaFeedNotificaciones
 import android.os.Bundle
 import android.os.SystemClock
 import android.content.Context
@@ -81,7 +84,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-                SocialComunnityApp()
+                AppSocialCommunity()
             }
         }
     }
@@ -91,8 +94,12 @@ class MainActivity : ComponentActivity() {
 fun SocialComunnityApp() {
     val context = LocalContext.current
     val preferencias = remember {
-        context.getSharedPreferences("socialcomunnity_preferencias", Context.MODE_PRIVATE)
+        context.getSharedPreferences(
+            "socialcomunnity_preferencias",
+            Context.MODE_PRIVATE
+        )
     }
+
     var temaOscuro by remember {
         mutableStateOf(preferencias.getBoolean("tema_oscuro", true))
     }
@@ -118,7 +125,6 @@ fun SocialComunnityApp() {
         color = Fondo
     ) {
         when (pantalla) {
-
             "inicio" -> {
                 PantallaInicio(
                     irALogin = {
@@ -169,7 +175,8 @@ fun SocialComunnityApp() {
                     registrar = { nuevoUsuario, nuevaContrasena ->
                         if (nuevoUsuario.isBlank() || nuevaContrasena.isBlank()) {
                             error = "Completa todos los campos"
-                        } else if (usuariosHelper.registrarUsuario(
+                        } else if (
+                            usuariosHelper.registrarUsuario(
                                 nuevoUsuario,
                                 nuevaContrasena
                             )
@@ -530,13 +537,9 @@ fun PantallaBienvenida(
 ) {
     var seccionSeleccionada by remember { mutableStateOf("inicio") }
 
-    // El contador vive en PantallaBienvenida, no dentro de la pantalla Videos.
-    // Por eso no se reinicia cuando cambiamos de sección.
     var contadorVideos by remember { mutableStateOf(0) }
     var contadorIniciado by remember { mutableStateOf(false) }
 
-    // Comienza al entrar por primera vez a Videos. Después sigue activo
-    // aunque el usuario cambie a Inicio, Perfil, Buscar o Crear.
     LaunchedEffect(contadorIniciado) {
         if (contadorIniciado) {
             while (true) {
@@ -546,9 +549,8 @@ fun PantallaBienvenida(
         }
     }
 
-    // La animación también vive en el nivel principal, así que sigue avanzando
-    // aunque la sección Videos no esté visible.
     val transicionOvalo = rememberInfiniteTransition()
+
     val movimientoOvalo by transicionOvalo.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
@@ -558,20 +560,21 @@ fun PantallaBienvenida(
         )
     )
 
-    // Sensores: la inclinación controla la orientación 3D y una sacudida activa el rebote.
     var inclinacionHorizontal by remember { mutableStateOf(0f) }
     var inclinacionVertical by remember { mutableStateOf(0f) }
     var numeroSacudidas by remember { mutableStateOf(0) }
+
     val desplazamientoRebote = remember { Animatable(0f) }
 
-    // Cada sacudida reproduce un salto corto y un regreso elástico.
     LaunchedEffect(numeroSacudidas) {
         if (numeroSacudidas > 0) {
             desplazamientoRebote.snapTo(0f)
+
             desplazamientoRebote.animateTo(
                 targetValue = -48f,
                 animationSpec = tween(durationMillis = 130)
             )
+
             desplazamientoRebote.animateTo(
                 targetValue = 0f,
                 animationSpec = spring(
@@ -581,49 +584,59 @@ fun PantallaBienvenida(
             )
         }
     }
+
     val contextoSensor = LocalContext.current
+
     val administradorSensores = remember(contextoSensor) {
         contextoSensor.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     }
+
     val acelerometro = remember(administradorSensores) {
         administradorSensores.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     }
 
-    // Se registra una sola vez mientras PantallaBienvenida permanece activa.
-    // Cambiar entre secciones no elimina el listener; al salir de esta pantalla sí.
     DisposableEffect(administradorSensores, acelerometro) {
         if (acelerometro != null) {
             var ultimaSacudida = 0L
+
             val listener = object : SensorEventListener {
                 override fun onSensorChanged(evento: SensorEvent) {
                     if (evento.values.size >= 3) {
-                        // Detectamos una sacudida por la aceleración total del teléfono.
                         val x = evento.values[0]
                         val y = evento.values[1]
                         val z = evento.values[2]
+
                         val aceleracionTotal = sqrt(x * x + y * y + z * z)
                         val ahora = SystemClock.elapsedRealtime()
 
-                        // El intervalo evita que una sola sacudida genere muchos rebotes.
-                        if (aceleracionTotal > 16.5f && ahora - ultimaSacudida > 650L) {
+                        if (
+                            aceleracionTotal > 16.5f &&
+                            ahora - ultimaSacudida > 650L
+                        ) {
                             ultimaSacudida = ahora
                             numeroSacudidas++
                         }
 
-                        // Suavizamos la respuesta para evitar movimientos bruscos.
-                        val nuevoHorizontal = (evento.values[0] * 4.5f)
-                            .coerceIn(-40f, 40f)
-                        val nuevoVertical = (evento.values[1] * -4.5f)
-                            .coerceIn(-40f, 40f)
+                        val nuevoHorizontal =
+                            (evento.values[0] * 4.5f).coerceIn(-40f, 40f)
+
+                        val nuevoVertical =
+                            (evento.values[1] * -4.5f).coerceIn(-40f, 40f)
 
                         inclinacionHorizontal =
-                            inclinacionHorizontal * 0.75f + nuevoHorizontal * 0.25f
+                            inclinacionHorizontal * 0.75f +
+                                    nuevoHorizontal * 0.25f
+
                         inclinacionVertical =
-                            inclinacionVertical * 0.75f + nuevoVertical * 0.25f
+                            inclinacionVertical * 0.75f +
+                                    nuevoVertical * 0.25f
                     }
                 }
 
-                override fun onAccuracyChanged(sensor: Sensor?, precision: Int) = Unit
+                override fun onAccuracyChanged(
+                    sensor: Sensor?,
+                    precision: Int
+                ) = Unit
             }
 
             administradorSensores.registerListener(
@@ -660,7 +673,10 @@ fun PantallaBienvenida(
                         selected = seccionSeleccionada == id,
                         onClick = {
                             seccionSeleccionada = id
-                            if (id == "videos") contadorIniciado = true
+
+                            if (id == "videos") {
+                                contadorIniciado = true
+                            }
                         },
                         icon = {
                             Text(
@@ -669,7 +685,9 @@ fun PantallaBienvenida(
                                 fontWeight = FontWeight.Bold
                             )
                         },
-                        label = { Text(etiqueta) },
+                        label = {
+                            Text(etiqueta)
+                        },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = Naranja,
                             selectedTextColor = Naranja,
@@ -683,43 +701,71 @@ fun PantallaBienvenida(
         }
     ) { padding ->
         when (seccionSeleccionada) {
-            "inicio" -> Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                PantallaContenidoInicio(
+            "inicio" -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                ) {
+                    PantallaFeedInicio(
+                        usuario = usuario,
+                        onAbrirNotificaciones = {
+                            seccionSeleccionada = "notificaciones"
+                        }
+                    )
+                }
+
+            }
+
+            // NOTIFICACIONES: ahora permite regresar a Inicio.
+            "notificaciones" -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                ) {
+                    PantallaFeedNotificaciones(
+                        onVolver = {
+                            seccionSeleccionada = "inicio"
+                        }
+                    )
+                }
+            }
+
+            "crear" -> {
+                PantallaCrearNavegacion(
                     usuario = usuario,
-                    cerrarSesion = cerrarSesion
+                    modifier = Modifier.padding(padding)
                 )
             }
 
-            "crear" -> PantallaCrearNavegacion(
-                usuario = usuario,
-                modifier = Modifier.padding(padding)
-            )
+            "videos" -> {
+                PantallaVideosActiva(
+                    contador = contadorVideos,
+                    movimientoOvalo = movimientoOvalo,
+                    inclinacionHorizontal = inclinacionHorizontal,
+                    inclinacionVertical = inclinacionVertical,
+                    desplazamientoRebote = desplazamientoRebote.value,
+                    tieneAcelerometro = acelerometro != null,
+                    modifier = Modifier.padding(padding)
+                )
+            }
 
-            "videos" -> PantallaVideosActiva(
-                contador = contadorVideos,
-                movimientoOvalo = movimientoOvalo,
-                inclinacionHorizontal = inclinacionHorizontal,
-                inclinacionVertical = inclinacionVertical,
-                desplazamientoRebote = desplazamientoRebote.value,
-                tieneAcelerometro = acelerometro != null,
-                modifier = Modifier.padding(padding)
-            )
+            "buscar" -> {
+                PantallaBuscarDemostracion(
+                    modifier = Modifier.padding(padding)
+                )
+            }
 
-            "buscar" -> PantallaBuscarDemostracion(
-                modifier = Modifier.padding(padding)
-            )
-
-            "perfil" -> PantallaPerfil(
-                usuario = usuario,
-                oscuro = oscuro,
-                cambiarTema = cambiarTema,
-                cerrarSesion = cerrarSesion,
-                modifier = Modifier.padding(padding)
-            )
+            "perfil" -> {
+                PantallaPerfil(
+                    usuario = usuario,
+                    oscuro = oscuro,
+                    cambiarTema = cambiarTema,
+                    cerrarSesion = cerrarSesion,
+                    modifier = Modifier.padding(padding)
+                )
+            }
         }
     }
 }
@@ -742,10 +788,17 @@ private fun PantallaCrearNavegacion(
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Crear publicación", color = Naranja, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Crear publicación",
+            color = Naranja,
+            fontSize = 25.sp,
+            fontWeight = FontWeight.Bold
+        )
+
         Spacer(Modifier.height(12.dp))
         Text("Comparte algo con tu comunidad", color = TextoSecundario)
         Spacer(Modifier.height(22.dp))
+
         OutlinedTextField(
             value = contenido,
             onValueChange = { contenido = it },
@@ -762,13 +815,19 @@ private fun PantallaCrearNavegacion(
                 unfocusedBorderColor = TextoSecundario
             )
         )
+
         Spacer(Modifier.height(16.dp))
+
         Button(
             onClick = {
                 if (contenido.isBlank()) {
                     mensaje = "Escribe algo antes de publicar."
                 } else {
-                    val fecha = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+                    val fecha = SimpleDateFormat(
+                        "dd/MM/yyyy HH:mm",
+                        Locale.getDefault()
+                    ).format(Date())
+
                     baseDatos.insertar(
                         Publicacion(
                             usuario = usuario,
@@ -776,15 +835,19 @@ private fun PantallaCrearNavegacion(
                             fecha = fecha
                         )
                     )
+
                     contenido = ""
                     mensaje = "¡Tu publicación se guardó correctamente!"
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Naranja)
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Naranja
+            )
         ) {
             Text("Publicar", color = Color.White)
         }
+
         if (mensaje.isNotBlank()) {
             Spacer(Modifier.height(12.dp))
             Text(mensaje, color = Naranja)
@@ -832,11 +895,20 @@ private fun PantallaVideosActiva(
             shape = RoundedCornerShape(18.dp)
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 36.dp, vertical = 22.dp),
+                modifier = Modifier.padding(
+                    horizontal = 36.dp,
+                    vertical = 22.dp
+                ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Tiempo transcurrido", color = TextoSecundario, fontSize = 14.sp)
+                Text(
+                    "Tiempo transcurrido",
+                    color = TextoSecundario,
+                    fontSize = 14.sp
+                )
+
                 Spacer(Modifier.height(8.dp))
+
                 Text(
                     text = "$contador s",
                     color = Naranja,
@@ -849,20 +921,26 @@ private fun PantallaVideosActiva(
         Spacer(Modifier.height(38.dp))
 
         Text(
-            text = if (tieneAcelerometro) "Óvalo controlado por el sensor" else "Acelerómetro no disponible",
+            text = if (tieneAcelerometro) {
+                "Óvalo controlado por el sensor"
+            } else {
+                "Acelerómetro no disponible"
+            },
             color = if (tieneAcelerometro) Naranja else Color(0xFFFF6B6B),
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
         )
+
         Spacer(Modifier.height(8.dp))
+
         Text(
             text = "Inclina el teléfono para girarlo y sacúdelo para hacerlo rebotar.",
             color = TextoSecundario,
             fontSize = 13.sp
         )
+
         Spacer(Modifier.height(16.dp))
 
-        // El óvalo gira sobre su propio centro sin desplazarse de su lugar.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -885,6 +963,7 @@ private fun PantallaVideosActiva(
         }
 
         Spacer(Modifier.height(24.dp))
+
         Text(
             text = "Puedes cambiar de sección: el contador y el movimiento seguirán activos.",
             color = TextoSecundario,
@@ -898,14 +977,22 @@ private fun PantallaBuscarDemostracion(
     modifier: Modifier = Modifier
 ) {
     var busqueda by remember { mutableStateOf("") }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(Fondo)
             .padding(20.dp)
     ) {
-        Text("Buscar", color = Naranja, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Buscar",
+            color = Naranja,
+            fontSize = 27.sp,
+            fontWeight = FontWeight.Bold
+        )
+
         Spacer(Modifier.height(16.dp))
+
         OutlinedTextField(
             value = busqueda,
             onValueChange = { busqueda = it },
@@ -922,9 +1009,15 @@ private fun PantallaBuscarDemostracion(
                 unfocusedBorderColor = TextoSecundario
             )
         )
+
         Spacer(Modifier.height(12.dp))
+
         Text(
-            if (busqueda.isBlank()) "Escribe para comenzar tu búsqueda." else "La búsqueda estará disponible próximamente.",
+            if (busqueda.isBlank()) {
+                "Escribe para comenzar tu búsqueda."
+            } else {
+                "La búsqueda estará disponible próximamente."
+            },
             color = TextoSecundario
         )
     }
@@ -946,36 +1039,69 @@ private fun PantallaPerfil(
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Mi perfil", color = Naranja, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Mi perfil",
+            color = Naranja,
+            fontSize = 27.sp,
+            fontWeight = FontWeight.Bold
+        )
+
         Spacer(Modifier.height(24.dp))
+
         Text("●", color = Naranja, fontSize = 64.sp)
-        Text(usuario, color = Blanco, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text(
+            usuario,
+            color = Blanco,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold
+        )
+
         Spacer(Modifier.height(30.dp))
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Gris)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Apariencia", color = Blanco, fontWeight = FontWeight.Bold)
-                    Text(if (oscuro) "Tema oscuro" else "Tema claro", color = TextoSecundario, fontSize = 13.sp)
+                    Text(
+                        "Apariencia",
+                        color = Blanco,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        if (oscuro) "Tema oscuro" else "Tema claro",
+                        color = TextoSecundario,
+                        fontSize = 13.sp
+                    )
                 }
+
                 Switch(
                     checked = oscuro,
                     onCheckedChange = cambiarTema,
-                    colors = SwitchDefaults.colors(checkedThumbColor = Naranja, checkedTrackColor = Naranja.copy(alpha = 0.35f))
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Naranja,
+                        checkedTrackColor = Naranja.copy(alpha = 0.35f)
+                    )
                 )
             }
         }
+
         Spacer(Modifier.height(24.dp))
+
         Button(
             onClick = cerrarSesion,
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Naranja)
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Naranja
+            )
         ) {
             Text("Cerrar sesión", color = Color.White)
         }
@@ -1057,7 +1183,7 @@ fun PantallaContenidoInicio(
             modifier = Modifier.size(90.dp)
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(Modifier.height(12.dp))
 
         Text(
             text = "¡Hola, $usuario!",
@@ -1074,7 +1200,7 @@ fun PantallaContenidoInicio(
 
         ApiRestSection()
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(24.dp))
 
         Text(
             text = if (idEditando == null) {
@@ -1087,7 +1213,7 @@ fun PantallaContenidoInicio(
             fontWeight = FontWeight.Bold
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
             value = contenido,
@@ -1106,7 +1232,7 @@ fun PantallaContenidoInicio(
             )
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(Modifier.height(12.dp))
 
         Button(
             onClick = {
@@ -1175,11 +1301,11 @@ fun PantallaContenidoInicio(
         }
 
         if (mensaje.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
             Text(mensaje, color = Naranja)
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(24.dp))
 
         Text(
             text = "Mis publicaciones",
@@ -1205,23 +1331,21 @@ fun PantallaContenidoInicio(
                     containerColor = Gris
                 )
             ) {
-                Column(
-                    modifier = Modifier.padding(14.dp)
-                ) {
+                Column(Modifier.padding(14.dp)) {
                     Text(
                         text = publicacion.usuario,
                         color = Naranja,
                         fontWeight = FontWeight.Bold
                     )
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(Modifier.height(6.dp))
 
                     Text(
                         text = publicacion.contenido,
                         color = Blanco
                     )
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(Modifier.height(6.dp))
 
                     Text(
                         text = publicacion.fecha,
@@ -1261,7 +1385,7 @@ fun PantallaContenidoInicio(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(Modifier.height(20.dp))
 
         Text(
             text = "Exportar publicaciones",
@@ -1270,7 +1394,7 @@ fun PantallaContenidoInicio(
             fontWeight = FontWeight.Bold
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(Modifier.height(8.dp))
 
         Button(
             onClick = {
@@ -1305,7 +1429,7 @@ fun PantallaContenidoInicio(
         }
 
         if (resultadoExportacion.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
             Text(
                 text = "Contenido generado",
@@ -1331,7 +1455,7 @@ fun PantallaContenidoInicio(
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
             Button(
                 onClick = {
@@ -1358,7 +1482,7 @@ fun PantallaContenidoInicio(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(24.dp))
 
         Button(
             onClick = cerrarSesion,
@@ -1370,7 +1494,7 @@ fun PantallaContenidoInicio(
             Text("Cerrar sesión", color = Blanco)
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -1434,7 +1558,6 @@ fun ApiRestSection() {
                 }
 
                 alRecibirRespuesta?.invoke(respuesta)
-
             } catch (e: Exception) {
                 error = e.message
                     ?: "Ocurrió un error al consultar la API."
@@ -1504,7 +1627,7 @@ fun ApiRestSection() {
         fontSize = 14.sp
     )
 
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(Modifier.height(12.dp))
 
     // GET
     Card(
@@ -1545,13 +1668,10 @@ fun ApiRestSection() {
                             body = datos.optString("body")
                         )
 
-                        // CAMBIO: solamente la publicación procesada
-                        // recibe la palabra "banco".
                         publicacionProcesada = publicacion.copy(
                             title = publicacion.title + " banco"
                         )
 
-                        // Los formularios conservan los datos originales.
                         tituloPost = publicacion.title
                         contenidoPost = publicacion.body
 
@@ -1573,7 +1693,7 @@ fun ApiRestSection() {
         }
     }
 
-    Spacer(modifier = Modifier.height(10.dp))
+    Spacer(Modifier.height(10.dp))
 
     // POST
     Card(
@@ -1614,7 +1734,6 @@ fun ApiRestSection() {
                 )
             )
 
-
             boton("Enviar (POST)") {
                 if (tituloPost.isBlank() || contenidoPost.isBlank()) {
                     error = "Escribe el título y el contenido para POST."
@@ -1636,7 +1755,6 @@ fun ApiRestSection() {
                                 body = datos.optString("body")
                             )
 
-                            // Agrega "banco" únicamente a la tarjeta procesada.
                             publicacionProcesada = publicacion.copy(
                                 title = if (publicacion.title.endsWith(" banco")) {
                                     publicacion.title
@@ -1652,8 +1770,7 @@ fun ApiRestSection() {
                 }
             }
 
-
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(Modifier.height(10.dp))
 
             // PUT
             Card(
@@ -1699,7 +1816,7 @@ fun ApiRestSection() {
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(Modifier.height(10.dp))
 
             // PATCH
             Card(
@@ -1760,7 +1877,7 @@ fun ApiRestSection() {
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(Modifier.height(10.dp))
 
             // DELETE
             Card(
@@ -1789,7 +1906,7 @@ fun ApiRestSection() {
             }
 
             if (cargando) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
 
                 CircularProgressIndicator(color = Naranja)
 
@@ -1800,7 +1917,7 @@ fun ApiRestSection() {
             }
 
             if (error.isNotBlank()) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(Modifier.height(10.dp))
 
                 Text(
                     "Error: $error",
@@ -1809,7 +1926,7 @@ fun ApiRestSection() {
             }
 
             if (datosCargadosDesdeGet) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
 
                 Text(
                     "Los datos de GET se copiaron a los formularios de POST, PUT y PATCH. Puedes modificarlos antes de enviar cada petición.",
@@ -1819,7 +1936,7 @@ fun ApiRestSection() {
             }
 
             if (mensajeUsuario.isNotBlank() && !cargando) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
 
                 Text(
                     mensajeUsuario,
@@ -1828,9 +1945,8 @@ fun ApiRestSection() {
                 )
             }
 
-            // Publicación procesada
             publicacionProcesada?.let { publicacion ->
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -1873,7 +1989,7 @@ fun ApiRestSection() {
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
             Text(
                 text = "Nota: JSONPlaceholder simula las operaciones de escritura. POST, PUT, PATCH y DELETE no modifican permanentemente sus datos.",
