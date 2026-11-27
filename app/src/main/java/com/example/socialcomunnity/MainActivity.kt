@@ -80,6 +80,8 @@ private val TextoSecundario get() = ColoresApp.textoSecundario
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Termina la pantalla de arranque (color y logo) y vuelve al tema normal de la app
+        setTheme(R.style.Theme_SocialComunnity)
         super.onCreate(savedInstanceState)
 
         setContent {

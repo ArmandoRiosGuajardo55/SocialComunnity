@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.SocialComunnity" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.SocialComunnity" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Barra de botones del sistema (abajo) en negro, como el tema de la app -->
+        <item name="android:navigationBarColor">@android:color/black</item>
+    </style>
+
+    <!-- Tema solo para el arranque: color y logo en vez de la pantalla en blanco.
+         MainActivity lo cambia por Theme.SocialComunnity en cuanto empieza. -->
+    <style name="Theme.SocialComunnity.Splash" parent="Theme.SocialComunnity">
+        <item name="android:windowBackground">@drawable/fondo_inicio</item>
+    </style>
 </resources>
